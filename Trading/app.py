@@ -98,6 +98,11 @@ def get_stock_price(symbol):
         return jsonify({'symbol': symbol, 'market_price': market_price})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    
+
+@app.route('/api/info/<symbol>', methods=['GET'])
+def company(symbol):
+    ticker = yf.Ticker(symbol)
+    return ticker.info.get('longName', 'NaN')
+
 if __name__ == '__main__':
     app.run(debug=True)

@@ -341,9 +341,6 @@ document.getElementById('buyBtn').addEventListener('click', function () {
                 if (!userDetails.cash_holding) {
                     userDetails.cash_holding = { cash_in_hand: 10000000, intraday_profit_loss: 0 };
                 }
-                console.log(userDetails)
-                console.log(parseFloat(userDetails['cash_holding'].cash_in_hand+10))
-                console.log(parseFloat(userDetails['intraday_holdings'].intraday_buy+100))
                 // Update intraday_buy and cash_in_hand
                 const cash = parseFloat((userDetails['cash_holding'].cash_in_hand - totalCost).toFixed(2));
                 const intraday = parseFloat((userDetails['intraday_holdings'].intraday_buy + totalCost).toFixed(2));
