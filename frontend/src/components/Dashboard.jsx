@@ -85,13 +85,13 @@ const Dashboard = () => {
             className="p-6 bg-white rounded-lg shadow-lg"
           >
             <h2 className="text-xl font-semibold text-gray-700 mb-4">Cash Holdings</h2>
-            <p className="text-3xl font-bold text-green-600">${userDetails.cash_holding.cash_in_hand}</p>
+            <p className="text-3xl font-bold text-green-600">₹{userDetails.cash_holding.cash_in_hand}</p>
             <h2 className="text-xl font-semibold text-gray-700 my-4">Intraday Profit/Loss</h2>
-            <p className="text-3xl font-bold text-green-600">${userDetails.cash_holding.intraday_profit_loss}</p>
+            <p className="text-3xl font-bold text-green-600">₹{userDetails.cash_holding.intraday_profit_loss}</p>
             <h2 className="text-xl font-semibold text-gray-700 my-4">Intraday Buy</h2>
-            <p className="text-3xl font-bold text-green-600">${userDetails.intraday_holdings.intraday_buy}</p>
+            <p className="text-3xl font-bold text-green-600">₹{userDetails.intraday_holdings.intraday_buy}</p>
             <h2 className="text-xl font-semibold text-gray-700 my-4">Intraday Sell</h2>
-            <p className="text-3xl font-bold text-green-600">${userDetails.intraday_holdings.intraday_sell}</p>
+            <p className="text-3xl font-bold text-green-600">₹{userDetails.intraday_holdings.intraday_sell}</p>
           </motion.div>
 
           <motion.div

@@ -108,6 +108,31 @@ const userProfile = asyncHandler(async (req, res) => {
   }
 });
 
+const updatePortfolio = asyncHandler(async (req, res) => {
+  try {
+    const { email, intraday_holdings, cash_holding } = req.body;
+
+    const user = await User.findOneAndUpdate(
+      { email },
+      {
+        $set: {
+          'intraday_holdings.intraday_buy': intraday_holdings,
+          'cash_holding.cash_in_hand': cash_holding
+        }
+      },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(constants.NOT_FOUND).json({ message: 'User not found' });
+    }
+
+    res.status(constants.OK).json({ message: 'Portfolio updated successfully', user });
+  } catch (error) {
+    console.error('Error updating portfolio:', error);
+    res.status(constants.INTERNAL_SERVER_ERROR).json({ message: 'Internal server error' });
+  }
+});
 const Sign_out = asyncHandler(async (req, res) => {
   // Invalidate the token on the client side
   res.status(200).json({ message: "User signed out successfully" });
@@ -118,4 +143,5 @@ module.exports = {
   Sign_in,
   Sign_out,
   userProfile,
+  updatePortfolio,
 };

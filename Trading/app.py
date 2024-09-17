@@ -85,5 +85,19 @@ def get_symbols():
         symbols = [line.strip() for line in f]
     return jsonify(symbols)
 
+
+@app.route('/api/<symbol>', methods=['GET'])
+def get_stock_price(symbol):
+    if not symbol:
+        return jsonify({'error': 'No stock symbol provided'}), 400
+    
+    try:
+        ticker = yf.Ticker(symbol)
+        data = ticker.history()
+        market_price = data['Close'].iloc[-1]
+        return jsonify({'symbol': symbol, 'market_price': market_price})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
 if __name__ == '__main__':
     app.run(debug=True)

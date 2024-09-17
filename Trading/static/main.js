@@ -194,6 +194,26 @@ document.getElementById('themeToggle').addEventListener('click', () => {
     }
 });
 
+function fetchAndSetBuyPrice(symbol) {
+    fetch(`/api/${symbol}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.market_price) {
+                const triggerPriceBuy = document.getElementById('triggerPriceBuy');
+                if (triggerPriceBuy) {
+                    triggerPriceBuy.value = data.market_price;
+                    console.log('Price fetched and set');
+                } else {
+                    console.error('Element not found');
+                }
+            } else {
+                console.error('Error fetching stock price:', data.error);
+            }
+        })
+        .catch(error => console.error('Error fetching stock price:', error));
+}
+
+
 // Load watchlist symbols from the server
 function loadWatchlist() {
     fetch('/api/symbols')
@@ -208,6 +228,7 @@ function loadWatchlist() {
                 item.addEventListener('click', () => {
                     document.getElementById('ticker').value = symbol;
                     fetchData(symbol, document.getElementById('timeframe').value, document.getElementById('emaPeriod').value, document.getElementById('rsiPeriod').value);
+                    fetchAndSetBuyPrice(symbol)
                 });
                 watchlistItems.appendChild(item);
             });
@@ -276,6 +297,9 @@ tickerInput.addEventListener('input', () => {
                             tickerInput.value = `${stock.symbol}.NS`;
                             suggestionsDiv.innerHTML = '';  // Clear suggestions
                             fetchData(tickerInput.value, document.getElementById('timeframe').value, document.getElementById('emaPeriod').value, document.getElementById('rsiPeriod').value);
+                            /* console.log('testing') */
+                            // Fetch the current price for the selected symbol
+                            fetchAndSetBuyPrice(query)
                         });
                         suggestionsDiv.appendChild(item);
                     });
@@ -291,28 +315,82 @@ tickerInput.addEventListener('input', () => {
 });
 
 document.getElementById('buyBtn').addEventListener('click', function () {
-    const triggerPriceBuy = document.getElementById('triggerPriceBuy').value;
 
-    let feedback = "Buy order placed: ";
-    feedback += `Trade Type: ${tradeType}, `;
-    feedback += marketPrice ? "Market Price" : `Trigger Price: ${triggerPriceBuy}, `;
+    const quantity = parseInt(document.getElementById('quantity').value, 10);
+    if (isNaN(quantity) || quantity <= 0) {
+        document.getElementById('feedback').innerText = 'Please enter a valid quantity';
+        return;
+    }
+    const symbol = document.getElementById('ticker').value;
 
-    document.getElementById('feedback').innerText = feedback;
+    fetch(`/api/${symbol}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.market_price) {
+                // Extract user details from the URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const userDetails = JSON.parse(decodeURIComponent(urlParams.get('user')));
+
+                // Calculate the total cost of the purchase
+                const totalCost = data.market_price * quantity;
+
+                // Ensure intraday_holdings and cash_holding are not null
+                if (!userDetails.intraday_holdings) {
+                    userDetails.intraday_holdings = { intraday_buy: 0, intraday_sell: 0 };
+                }
+                if (!userDetails.cash_holding) {
+                    userDetails.cash_holding = { cash_in_hand: 10000000, intraday_profit_loss: 0 };
+                }
+                console.log(userDetails)
+                console.log(parseFloat(userDetails['cash_holding'].cash_in_hand+10))
+                console.log(parseFloat(userDetails['intraday_holdings'].intraday_buy+100))
+                // Update intraday_buy and cash_in_hand
+                const cash = parseFloat((userDetails['cash_holding'].cash_in_hand - totalCost).toFixed(2));
+                const intraday = parseFloat((userDetails['intraday_holdings'].intraday_buy + totalCost).toFixed(2));
+
+                // Send the updated user details to the backend to update the database
+                fetch('http://localhost:8000/api/users/update-portfolio', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    },
+                    body: JSON.stringify({
+                        email: userDetails.email,
+                        intraday_holdings: intraday,
+                        cash_holding: cash
+                    })
+                })
+                .then(updateResponse => updateResponse.json())
+                .then(updateData => {
+                    if (updateData.message === 'Portfolio updated successfully') {
+                        console.log('Portfolio updated successfully');
+                        // Optionally, display a success message on the page
+                        document.getElementById('feedback').innerText = 'Portfolio updated successfully';
+                    } else {
+                        console.error('Error updating portfolio:', updateData.error);
+                        // Optionally, display an error message on the page
+                        document.getElementById('feedback').innerText = 'Error updating portfolio';
+                    }
+                })
+                .catch(error => console.error('Error updating portfolio:', error));
+            } else {
+                console.error('Error fetching stock price:', data.error);
+            }
+        })
+        .catch(error => console.error('Error fetching stock price:', error));
 });
 
-document.getElementById('sellBtn').addEventListener('click', function () {
+
+function handleSell() {
     const tradeType = document.getElementById('tradeType').value;
-    const marketPrice = document.getElementById('marketPrice').checked;
-    const triggerPriceSell = document.getElementById('triggerPriceSell').value;
-    const stopLoss = document.getElementById('stopLoss').value;
+    const quantity = document.getElementById('quantity').value;
+    const buyPrice = document.getElementById('triggerPriceBuy').value;
 
-    let feedback = "Sell order placed: ";
-    feedback += `Trade Type: ${tradeType}, `;
-    feedback += marketPrice ? "Market Price" : `Trigger Price: ${triggerPriceSell}, `;
-    if (stopLoss) feedback += `Stop Loss: ${stopLoss}`;
-
-    document.getElementById('feedback').innerText = feedback;
-});
+    // Add your sell logic here
+    console.log(`Selling ${quantity} shares at ${buyPrice} with trade type ${tradeType}`);
+    document.getElementById('feedback').textContent = `Sold ${quantity} shares at ${buyPrice}`;
+}
 
 // Handle theme toggle
 document.getElementById('themeToggle').addEventListener('click', function () {
@@ -322,59 +400,5 @@ document.getElementById('themeToggle').addEventListener('click', function () {
     document.body.classList.toggle('text-white');
 });
 
-// Disable/Enable trigger price inputs based on Market Price checkbox
-const marketPriceCheckbox = document.getElementById('marketPrice');
-const triggerPriceBuy = document.getElementById('triggerPriceBuy');
-const triggerPriceSell = document.getElementById('triggerPriceSell');
-
-marketPriceCheckbox.addEventListener('change', function () {
-    if (this.checked) {
-        triggerPriceBuy.value = '';
-        triggerPriceSell.value = '';
-        triggerPriceBuy.disabled = true;
-        triggerPriceSell.disabled = true;
-    } else {
-        triggerPriceBuy.disabled = false;
-        triggerPriceSell.disabled = false;
-    }
-});
 
 // Buy Button functionality
-document.getElementById('buyBtn').addEventListener('click', function () {
-    const tradeType = document.getElementById('tradeType').value;
-    const quantity = document.getElementById('quantity').value;
-    const marketPrice = marketPriceCheckbox.checked;
-    const stopLoss = document.getElementById('stopLoss').value;
-
-    if (!quantity || quantity <= 0) {
-        document.getElementById('feedback').innerText = "Please enter a valid quantity.";
-        return;
-    }
-
-    let feedback = "Buy order placed: ";
-    feedback += `Trade Type: ${tradeType}, Quantity: ${quantity}, `;
-    feedback += marketPrice ? "Market Price" : `Trigger Price: ${triggerPriceBuy.value}, `;
-    if (stopLoss) feedback += `Stop Loss: ${stopLoss}`;
-
-    document.getElementById('feedback').innerText = feedback;
-});
-
-// Sell Button functionality
-document.getElementById('sellBtn').addEventListener('click', function () {
-    const tradeType = document.getElementById('tradeType').value;
-    const quantity = document.getElementById('quantity').value;
-    const marketPrice = marketPriceCheckbox.checked;
-    const stopLoss = document.getElementById('stopLoss').value;
-
-    if (!quantity || quantity <= 0) {
-        document.getElementById('feedback').innerText = "Please enter a valid quantity.";
-        return;
-    }
-
-    let feedback = "Sell order placed: ";
-    feedback += `Trade Type: ${tradeType}, Quantity: ${quantity}, `;
-    feedback += marketPrice ? "Market Price" : `Trigger Price: ${triggerPriceSell.value}, `;
-    if (stopLoss) feedback += `Stop Loss: ${stopLoss}`;
-
-    document.getElementById('feedback').innerText = feedback;
-});
